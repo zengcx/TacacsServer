@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.tacacs.TacacsPlusServer.services.db.AuthenticationMapper">
+	<resultMap type="com.tacacs.TacacsPlusServer.services.db.entity.authenEntity"  id="AutenMap">
+		<result column="acl_id" jdbcType="VARCHAR" property="aclIid"/>
+		<result column="usertype" jdbcType="VARCHAR" property="userType"/>
+		<result column="usergroupid" jdbcType="VARCHAR" property="userGroupId"/>
+		<result column="usergroupname" jdbcType="VARCHAR" property="userGroupName"/>
+		<result column="userid" jdbcType="VARCHAR" property="userId"/>
+		<result column="username" jdbcType="VARCHAR" property="userName"/>
+		<result column="password" jdbcType="VARCHAR" property="password"/>
+		<result column="restype" jdbcType="VARCHAR" property="resType"/>
+		<result column="resgroupid" jdbcType="VARCHAR" property="resGroupId"/>
+		<result column="resgroupname" jdbcType="VARCHAR" property="resGroupName"/>
+		<result column="clientid" jdbcType="VARCHAR" property="clientId"/>
+		<result column="clientname" jdbcType="VARCHAR" property="clientName"/>
+		<result column="permission_id" jdbcType="VARCHAR" property="permissionId"/>
+		<result column="ace_order" jdbcType="VARCHAR" property="aceOrder"/>
+		<result column="permission_name" jdbcType="VARCHAR" property="permissionName"/>
+		<result column="permission_type" jdbcType="VARCHAR" property="permissionType"/>
+	</resultMap>
+	<select id="getUserInfo" resultMap="AutenMap" parameterType="java.util.Map">
+		<![CDATA[ select v.*,e.permission_id,e.ace_order,p.name as permission_name,p.type as permission_type from  (SELECT v1.acl_id,
+    	v1.usertype,v1.usergroupid,v1.usergroupname,v1.userid,v1.username,v1.password, v2.restype,v2.resgroupid,v2.resgroupname,v2.clientid,v2.clientname
+   		FROM ( SELECT t0.acl_id,
+            'user'::text AS usertype,
+            ''::character varying AS usergroupid,
+            ''::character varying AS usergroupname,
+            m.id AS userid,
+            m.name AS username,
+			m.password
+           FROM (t_aaa_acl_object_identity t0
+            JOIN t_acc_master m ON (((t0.object_id_identity)::text = (m.id)::text)and  m.status='normal'))
+          WHERE (t0.object_id_class = 1)
+        UNION
+         SELECT t0.acl_id,
+            'usergroup'::text AS usertype,
+            g1.id AS usergroupid,
+            g1.name AS usergroupname,
+            m.id AS userid,
+            m.name AS username,
+			m.password
+           FROM (((t_aaa_acl_object_identity t0
+             JOIN t_acc_master_group g1 ON (((t0.object_id_identity)::text = (g1.id)::text)))
+             JOIN t_auth_r_mastergroup_master ma1 ON (((ma1.mastergroupid)::text = (g1.id)::text)))
+             JOIN t_acc_master m ON (((ma1.masterid)::text = (m.id)::text)and  m.status='normal'))
+          WHERE (t0.object_id_class = 2)) v1,
+    ( SELECT t0.acl_id,
+            'res'::text AS restype,
+            ''::character varying AS resgroupid,
+            ''::character varying AS resgroupname,
+            r.id AS clientid,
+            r.ip AS clientname
+           FROM (t_aaa_acl_object_identity t0
+            JOIN t_auth_res r ON (((t0.object_id_identity)::text = (r.id)::text)and r.status='normal'))
+          WHERE (t0.object_id_class = 3)
+        UNION
+         SELECT t0.acl_id,
+            'resgroup'::text AS restype,
+            g2.id AS resgroupid,
+            g2.name AS resgroupname,
+            r.id AS clientid,
+            r.ip AS clientname
+           FROM (((t_aaa_acl_object_identity t0
+             JOIN t_auth_res_group g2 ON (((t0.object_id_identity)::text = (g2.id)::text)))
+             JOIN t_auth_r_resgroup_res ma2 ON (((g2.id)::text = (ma2.resgroupid)::text)))
+             JOIN t_auth_res r ON (((ma2.resid)::text = (r.id)::text)and r.status='normal'))
+          WHERE (t0.object_id_class = 4)) v2
+  WHERE ((v1.acl_id)::text = (v2.acl_id)::text)
+  ORDER BY v1.acl_id) v,t_aaa_acl_entry e,t_aaa_permission_group p where e.id =v.acl_id  
+  and p.id=e.permission_id and p.type='1' and p.status='on' ]]>
+  <if test="name != null and name != ''">
+     and v.username =#{name}
+  </if>
+  <if test="pass != null and pass != ''">
+     and v.password =#{pass}
+  </if>
+  <if test="clientIp != null and clientIp != ''">
+     and v.clientname=#{clientIp}
+  </if>
+  order by ace_order desc
+	</select>
+</mapper>
